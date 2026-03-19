@@ -28,6 +28,7 @@ import {
 import { detectAuthMode } from './credential-proxy.js';
 import { validateAdditionalMounts } from './mount-security.js';
 import { RegisteredGroup } from './types.js';
+import { readEnvFile } from './env.js';
 
 // Sentinel markers for robust output parsing (must match agent-runner)
 const OUTPUT_START_MARKER = '---NANOCLAW_OUTPUT_START---';
@@ -236,6 +237,20 @@ function buildContainerArgs(
     args.push('-e', 'ANTHROPIC_API_KEY=placeholder');
   } else {
     args.push('-e', 'CLAUDE_CODE_OAUTH_TOKEN=placeholder');
+  }
+
+  // Pass OpenMail credentials so the agent can use the openmail CLI inside the container.
+  const openMailKeys = [
+    'OPENMAIL_API_KEY',
+    'OPENMAIL_INBOX_ID',
+    'OPENMAIL_ADDRESS',
+    'OPENMAIL_MODE',
+    'OPENMAIL_API_URL',
+  ] as const;
+  const openMailEnv = readEnvFile([...openMailKeys]);
+  for (const key of openMailKeys) {
+    const val = process.env[key] ?? openMailEnv[key];
+    if (val) args.push('-e', `${key}=${val}`);
   }
 
   // Runtime-specific args for host gateway resolution
